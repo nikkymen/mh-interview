@@ -1,319 +1,305 @@
-#!/usr/bin/env python3
-
 import os
+os.environ["NUMBA_DISABLE_CUDA"] = "1"
+
+import glob
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import re
-import itertools
+import seaborn as sns
 
-from typing import Dict, List, Tuple, Optional
+from tsfresh import extract_features
+from tsfresh.utilities.dataframe_functions import impute
+from tsfresh.feature_selection import select_features
+from tsfresh.feature_extraction import ComprehensiveFCParameters
 
-def load_data(file_path: str) -> pd.DataFrame:
-    """Load data from CSV file and filter out unsuccessful frames."""
-    print(f"Loading data from: {file_path}")
-    df = pd.read_csv(file_path)
-    # Skip frames with success == 0
-    df = df[df['success'] == 1]
-    return df
+from typing import Dict, Optional
 
-def identify_au_columns(df: pd.DataFrame) -> List[str]:
-    """Identify Action Unit columns in the dataframe."""
-    au_pattern = re.compile(r'AU\d+_r')
-    au_columns = [col for col in df.columns if au_pattern.match(col)]
-    return au_columns
+class FacialExpressionAnalyzer:
+    def __init__(self, data_dir: str, output_dir: str):
+        """
+        Initialize the facial expression analyzer
 
-def detect_spikes(series: pd.Series, threshold: float = 0.5, min_drop: float = 0.2) -> int:
+        Args:
+            data_dir: Directory containing CSV or Parquet files
+            output_dir: Directory to save output files
+        """
+        self.data_dir = data_dir
+        self.output_dir = output_dir
+
+        # Create output directories
+        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "graphs"), exist_ok=True)
+
+    def load_and_preprocess_data(self, file_path: str) -> pd.DataFrame:
+        """
+        Load and preprocess data from a CSV or Parquet file
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Preprocessed DataFrame
+        """
+
+        # Determine file type by extension
+        file_extension = os.path.splitext(file_path)[1].lower()
+
+        # Load data based on file type
+        if file_extension == '.csv':
+            df = pd.read_csv(file_path)
+        elif file_extension in ['.parquet', '.pq']:
+            df = pd.read_parquet(file_path)
+        else:
+            raise ValueError(f"Unsupported file format: {file_extension}. Only .csv and .parquet files are supported.")
+
+        # Filter out rows where success is 0
+        df = df[df['success'] == 1]
+
+        # Reset index after filtering
+        df.reset_index(drop=True, inplace=True)
+
+        return df
+
+    def extract_features_for_video(self, df: pd.DataFrame, video_id: str) -> pd.DataFrame:
+        """
+        Extract time series features for a single video
+
+        Args:
+            df: DataFrame containing the video data
+            video_id: ID of the video
+
+        Returns:
+            DataFrame with extracted features
+        """
+        # Prepare data for tsfresh
+        # For each AU column, we'll create a separate time series
+        au_columns = [col for col in df.columns if col.startswith('AU') and col.endswith('_r')]
+
+        # Create a dataframe suitable for tsfresh
+        tsfresh_df = pd.DataFrame()
+
+        for au_col in au_columns:
+            # Create a temporary dataframe for this AU
+            temp_df = df[['timestamp', au_col]].copy()
+            temp_df['id'] = f"{video_id}"  # ID for the video
+            temp_df['kind'] = au_col  # The kind of feature (which AU)
+            temp_df.rename(columns={au_col: 'value'}, inplace=True)
+
+            # Append to the tsfresh dataframe
+            tsfresh_df = pd.concat([tsfresh_df, temp_df[['id', 'timestamp', 'kind', 'value']]])
+
+        settings = ComprehensiveFCParameters()
+
+    #     fc_parameters = {
+    #    #     "number_cwt_peaks": [{"n": 1}, {"n": 3}, {"n": 5}, {"n": 10}, {"n": 50}]
+    #         "number_crossing_m": [{"m": 1.5}]
+    #     }
+
+        # Extract features using tsfresh
+        features = extract_features(
+            tsfresh_df,
+            default_fc_parameters=settings,
+            column_id='id',
+            column_sort='timestamp',
+            column_kind='kind',
+            column_value='value',
+            impute_function=impute
+        )
+
+        # Ensure we return a DataFrame
+        if isinstance(features, pd.DataFrame):
+            return features
+        else:
+            # If features is not a DataFrame, return an empty DataFrame
+            return pd.DataFrame()
+
+    def create_au_intensity_graphs(self, data_dict: Dict[str, pd.DataFrame]) -> None:
+        """
+        Create intensity change graphs for each AU in each video
+
+        Args:
+            data_dict: Dictionary containing DataFrames for each video
+        """
+        # For each video
+        for video_id, df in data_dict.items():
+            # Create a directory for this video
+            video_dir = os.path.join(self.output_dir, "graphs", f"{video_id}")
+
+            if os.path.exists(video_dir):
+                continue
+
+            os.makedirs(video_dir, exist_ok=True)
+
+            # Get all AU columns with intensity values (_r suffix)
+            au_intensity_cols = [col for col in df.columns if col.endswith('_r')]
+
+            # Plot each AU
+            for au_col in au_intensity_cols:
+                plt.figure(figsize=(12, 6))
+
+                # Create the line plot
+                sns.lineplot(x='timestamp', y=au_col, data=df)
+
+                plt.ylim(0, 5)
+
+                # Add labels and title
+                plt.xlabel('Time (seconds)')
+                plt.ylabel('Intensity')
+                plt.title(f'{au_col} {video_id}')
+
+                # Save the figure
+                plt.tight_layout()
+                plt.savefig(os.path.join(video_dir, f"{au_col}.png"))
+                plt.close()
+
+    def create_consolidated_graphs(self, data_dict: Dict[str, pd.DataFrame]) -> None:
+        """
+        Create a consolidated image for each video showing all AU intensity graphs
+        arranged in a grid with 5 graphs per row.
+
+        Args:
+            data_dict: Dictionary containing DataFrames for each video
+        """
+        video_dir = os.path.join(self.output_dir, "graphs")
+
+        # For each video
+        for video_id, df in data_dict.items():
+            image_path = os.path.join(video_dir, f"{video_id}.png")
+
+            if os.path.exists(image_path):
+                continue
+
+            # Get all AU columns with intensity values (_r suffix)
+            au_intensity_cols = [col for col in df.columns if col.endswith('_r')]
+
+            # Calculate grid dimensions
+            num_aus = len(au_intensity_cols)
+            num_cols = 5  # 5 graphs per row
+            num_rows = (num_aus + num_cols - 1) // num_cols  # Ceiling division
+
+            # Create a figure with FullHD dimensions (1920x1080)
+            fig = plt.figure(figsize=(19.2, 10.8))  # 1920x1080 pixels at 100 DPI
+
+            # Create subplots for each AU
+            for i, au_col in enumerate(au_intensity_cols):
+                ax = fig.add_subplot(num_rows, num_cols, i + 1)
+
+                # Create the line plot
+                sns.lineplot(x='timestamp', y=au_col, data=df, linewidth=1.5, ax=ax)
+
+                # Add labels and title
+                ax.set_xlabel('')
+                ax.set_ylabel('')
+
+                ax.set_title(au_col)
+                ax.set_ylim(0, 5)
+
+            # Add a main title
+            plt.suptitle(f'{video_id}', fontsize=12)
+
+            # Adjust layout
+            plt.tight_layout()
+            plt.subplots_adjust(top=0.95)  # Make room for the suptitle
+
+            # Save the figure to the video directory
+            plt.savefig(os.path.join(video_dir, f"{video_id}.png"), dpi=100)
+            plt.close()
+
+    def process_videos(self, target_values: Optional[pd.Series] = None) -> pd.DataFrame:
+        """
+        Process all videos in the data directory
+
+        Args:
+            target_values: Target values for feature filtering (optional)
+
+        Returns:
+            DataFrame with extracted and filtered features
+        """
+        # Get all CSV files in the data directory
+        data_files = glob.glob(os.path.join(self.data_dir, "*"))
+
+        if not data_files:
+            raise ValueError(f"No data files found in {self.data_dir}")
+
+        # Dictionary to store dataframes
+        data_dict = {}
+        all_features = []
+
+        # Process each file
+        for file_path in data_files:
+            # Get video ID from filename
+            video_id = os.path.splitext(os.path.basename(file_path))[0]
+
+            # Load and preprocess the data
+            df = self.load_and_preprocess_data(file_path)
+
+            # Store the preprocessed data
+            data_dict[video_id] = df
+
+            # Extract features for this video
+            if False:
+                video_features = self.extract_features_for_video(df, video_id)
+                video_features['video_id'] = video_id
+                all_features.append(video_features)
+
+        # Create AU intensity graphs
+        self.create_au_intensity_graphs(data_dict)
+
+        # Create consolidated graphs
+        self.create_consolidated_graphs(data_dict)
+
+        # Combine all features
+        if all_features:
+            combined_features = pd.concat(all_features)
+
+            # Save the extracted features
+            combined_features.to_csv(os.path.join(self.output_dir, "extracted_features.csv"))
+            combined_features.to_parquet(os.path.join(self.output_dir, "extracted_features.parquet"),
+                                         compression='snappy')
+
+            # Filter relevant features if target values are provided
+            if target_values is not None:
+                # Ensure target_values align with features
+                if len(target_values) != len(combined_features):
+                    raise ValueError("Target values must have the same length as the number of videos")
+
+                # Select relevant features
+                filtered_features = select_features(
+                    combined_features.drop(columns=['video_id']),
+                    target_values,
+                    fdr_level=0.05
+                )
+
+                # Add video_id back
+                filtered_features['video_id'] = combined_features['video_id']
+
+                # Save the filtered features
+                filtered_features.to_csv(os.path.join(self.output_dir, "filtered_features.csv"))
+
+                return filtered_features
+
+            return combined_features
+        else:
+            return pd.DataFrame()
+
+
+def main():
+
     """
-    Detect complete spikes (rise and fall patterns) in a time series.
-    A spike is counted when signal rises above threshold and then drops below (threshold - min_drop).
+    Main function to orchestrate the process
     """
-    # For very short series, return 0
-    if len(series) < 3:
-        return 0
+    # Define data and output directories
+    data_dir = "data/parquet"
+    output_dir = "output"
 
-    # Normalize the series to 0-1 range for consistent threshold application
-    if series.std() > 0 and series.max() > series.min():
-        normalized = (series - series.min()) / (series.max() - series.min())
-    else:
-        normalized = series - series.min()
+    # Initialize the analyzer
+    analyzer = FacialExpressionAnalyzer(data_dir, output_dir)
 
-    # Set the lower threshold for detecting when a spike has ended
-    lower_threshold = max(0, threshold - min_drop)
+    # Process videos
+    features = analyzer.process_videos()
 
-    spike_count = 0
-    in_spike = False
-
-    for i in range(len(normalized)):
-        if not in_spike and normalized.iloc[i] >= threshold:
-            # Start of a spike
-            in_spike = True
-        elif in_spike and normalized.iloc[i] <= lower_threshold:
-            # End of a spike
-            in_spike = False
-            spike_count += 1
-
-    # If we're still in a spike at the end of the series, count it if it was long enough
-    if in_spike:
-        spike_count += 1
-
-    return spike_count
-
-def extract_binned_features(series: pd.Series, num_bins: int = 10) -> Dict[str, float]:
-    """Extract features by dividing the time series into fixed number of bins."""
-    features = {}
-    # Create equal-sized bins regardless of video length
-    bin_indices = np.array_split(np.arange(len(series)), num_bins)
-
-    for i, indices in enumerate(bin_indices):
-        if len(indices) > 0:
-            bin_values = series.iloc[indices]
-            features[f"bin_{i}_mean"] = float(bin_values.mean())
-            features[f"bin_{i}_max"] = float(bin_values.max())
-            features[f"bin_{i}_std"] = float(bin_values.std()) if len(bin_values) > 1 else 0.0
-
-    return features
-
-def extract_frequency_features(series: pd.Series, num_components: int = 10) -> Dict[str, float]:
-    """Extract frequency domain features using FFT."""
-    features = {}
-
-    # Apply FFT and get magnitudes
-    if len(series) > 1:
-        fft_values = np.abs(np.fft.fft(series - series.mean()))
-        # Get the most significant frequencies
-        significant_freqs = fft_values[:len(fft_values)//2]
-
-        # Take top N components
-        top_n = min(num_components, len(significant_freqs))
-        if top_n > 0:
-            for i in range(top_n):
-                if i < len(significant_freqs):
-                    features[f"fft_{i}"] = float(significant_freqs[i])
-
-    return features
-
-def extract_pattern_features(series: pd.Series) -> Dict[str, float]:
-    """Extract features related to temporal patterns."""
-    features = {}
-
-    if len(series) > 2:
-        # Direction changes (zero crossings of the derivative)
-        diff_series = np.diff(series)
-        direction_changes = ((diff_series[:-1] * diff_series[1:]) < 0).sum()
-        features["direction_changes"] = float(direction_changes)
-
-        # Time ascending/descending
-        features["time_ascending"] = float((diff_series > 0).sum() / len(diff_series))
-
-        # Longest streak above mean
-        above_mean = series > series.mean()
-        streaks = [sum(1 for _ in group) for val, group in itertools.groupby(above_mean) if val]
-        features["longest_above_mean"] = float(max(streaks)) if streaks else 0.0
-
-    return features
-
-def aggregate_features(df: pd.DataFrame, au_columns: List[str]) -> Dict[str, float]:
-    """Aggregate features for each Action Unit."""
-    features: Dict[str, float] = {}
-    video_duration = df['timestamp'].max() - df['timestamp'].min()
-
-    for au in au_columns:
-        series = df[au]
-
-        # Basic statistics
-        features[f"{au}_mean"] = float(series.mean())
-        features[f"{au}_std"] = float(series.std())
-        features[f"{au}_max"] = float(series.max())
-        features[f"{au}_min"] = float(series.min())
-        features[f"{au}_median"] = float(series.median())
-
-        # Detect spikes (complete events like blinks)
-        # Use different thresholds depending on the AU
-        if au == "AU45_r":  # For blinking
-            spikes = detect_spikes(series, threshold=0.5, min_drop=0.3)
-        else:
-            spikes = detect_spikes(series, threshold=0.4, min_drop=0.2)
-
-        features[f"{au}_spike_count"] = spikes
-
-        # Frequency of spikes per minute
-        if video_duration > 0:
-            features[f"{au}_spikes_per_minute"] = spikes / (video_duration / 60)
-        else:
-            features[f"{au}_spikes_per_minute"] = 0.0
-
-        # Time above thresholds
-        for threshold in [0.2, 0.5, 0.8]:
-            time_above = (series > threshold).sum() / len(series)
-            features[f"{au}_time_above_{threshold}"] = float(time_above)
-
-        # Variability measures
-        features[f"{au}_iqr"] = float(series.quantile(0.75) - series.quantile(0.25))
-        if len(series) > 1:
-            features[f"{au}_rate_of_change"] = float(np.abs(np.diff(series)).mean())
-        else:
-            features[f"{au}_rate_of_change"] = 0.0
-
-        # Add new fixed-length feature vectors
-        bin_features = extract_binned_features(series, num_bins=10)
-        freq_features = extract_frequency_features(series, num_components=8)
-        pattern_features = extract_pattern_features(series)
-
-        # Add prefixes to identify features
-        for k, v in bin_features.items():
-            features[f"{au}_{k}"] = v
-        for k, v in freq_features.items():
-            features[f"{au}_{k}"] = v
-        for k, v in pattern_features.items():
-            features[f"{au}_{k}"] = v
-
-    # Add general video statistics
-    features["video_duration"] = float(video_duration)
-
-    return features
-
-def plot_au_intensity(df: pd.DataFrame, au_column: str, output_dir: str, file_name: str) -> str:
-    """Plot intensity change of an Action Unit and save the plot."""
-    plt.figure(figsize=(12, 6))
-    plt.plot(df['timestamp'], df[au_column], label=au_column)
-
-    # Visualize spikes with colored regions
-    if len(df) > 3:
-        # Normalize for spike detection
-        series = df[au_column]
-        if series.std() > 0 and series.max() > series.min():
-            normalized = (series - series.min()) / (series.max() - series.min())
-        else:
-            normalized = series - series.min()
-
-        threshold = 0.5 if au_column == "AU45_r" else 0.4
-        lower_threshold = threshold - (0.3 if au_column == "AU45_r" else 0.2)
-
-        in_spike = False
-        spike_regions: List[Tuple[int, int]] = []
-        start_idx = 0
-
-        for i in range(len(normalized)):
-            if not in_spike and normalized.iloc[i] >= threshold:
-                # Start of spike
-                in_spike = True
-                start_idx = i
-            elif in_spike and normalized.iloc[i] <= lower_threshold:
-                # End of spike
-                in_spike = False
-                spike_regions.append((start_idx, i))
-
-        # If still in a spike at the end
-        if in_spike:
-            spike_regions.append((start_idx, len(normalized)-1))
-
-        # Add colored regions for spikes
-        for start, end in spike_regions:
-            plt.axvspan(df['timestamp'].iloc[start], df['timestamp'].iloc[end],
-                       alpha=0.2, color='green', label='_spike')
-
-    # Add annotations and labels
-    plt.title(f"{au_column} Intensity Over Time - {file_name}")
-    plt.xlabel("Time (seconds)")
-    plt.ylabel("Intensity")
-    plt.grid(True, alpha=0.3)
-
-    # Add a single "Spike" label to the legend
-    if len(df) > 3:
-        handles, labels = plt.gca().get_legend_handles_labels()
-        if 'Spike' not in labels and '_spike' in labels:
-            for i, label in enumerate(labels):
-                if label == '_spike':
-                    labels[i] = 'Spike'
-                    break
-            plt.legend(handles, labels)
-        else:
-            plt.legend()
-    else:
-        plt.legend()
-
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Save the plot to a file
-    plot_path = os.path.join(output_dir, f"{au_column}_{file_name}.png")
-    plt.savefig(plot_path)
-    plt.close()
-
-    return plot_path
-
-def process_video_file(file_path: str, plots_dir: str) -> Optional[Dict[str, float]]:
-    """Process a single video file."""
-    # Load and filter data
-    df = load_data(file_path)
-    if len(df) == 0:
-        print(f"No valid frames found in {file_path}")
-        return None
-
-    # Get file name without extension
-    file_name = os.path.basename(file_path).split('.')[0]
-
-    # Identify Action Unit columns
-    au_columns = identify_au_columns(df)
-    if not au_columns:
-        print(f"No Action Unit columns found in {file_path}")
-        return None
-
-    print(f"Found {len(au_columns)} Action Units")
-
-    # Aggregate features
-    features = aggregate_features(df, au_columns)
-
-    # Create plots for each Action Unit
-    for au in au_columns:
-        plot_path = plot_au_intensity(df, au, plots_dir + '/' + file_name, file_name)
-        print(f"Saved plot to {plot_path}")
-
-    return features
-
-def main() -> None:
-    # Directory containing CSV files
-    data_dir: str = 'data'
-    plots_dir: str = 'plots'
-    output_file: str = 'aggregated_features.csv'
-
-    # Create output directory
-    os.makedirs(plots_dir, exist_ok=True)
-
-    # List available CSV files
-    try:
-        csv_files: List[str] = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
-    except FileNotFoundError:
-        print(f"Error: '{data_dir}' directory not found.")
-        return
-
-    if not csv_files:
-        print(f"No CSV files found in '{data_dir}' directory.")
-        return
-
-    print(f"Found {len(csv_files)} CSV files to process.")
-
-    # Process each file and collect features
-    all_features: Dict[str, Dict[str, float]] = {}
-    for file in csv_files:
-        file_path = os.path.join(data_dir, file)
-        print(f"\nProcessing {file}...")
-
-        features = process_video_file(file_path, plots_dir)
-        if features:
-            file_name = os.path.basename(file).split('.')[0]
-            all_features[file_name] = features
-
-    # Convert features to DataFrame and save
-    if all_features:
-        features_df = pd.DataFrame.from_dict(all_features, orient='index')
-        features_df.to_csv(output_file)
-        print(f"\nAggregated features saved to {output_file}")
-        print(f"Features extracted: {features_df.shape[1]}")
-        print(f"Videos processed: {features_df.shape[0]}")
-    else:
-        print("No features were extracted.")
+    print(f"Processed videos and extracted {features.shape[1] - 1} features.")  # -1 for video_id
+    print(f"Features saved to {os.path.join(output_dir, 'extracted_features.csv')}")
+    print(f"Visualization graphs saved to {os.path.join(output_dir, 'graphs')}")
 
 if __name__ == "__main__":
     main()

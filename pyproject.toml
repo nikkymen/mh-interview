@@ -1,10 +1,14 @@
 [project]
 name = "mh-interview"
 version = "0.1.0"
-description = "Add your description here"
+description = "Aggregate features from time series"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = "==3.9.5"
 dependencies = [
-    "matplotlib>=3.10.5",
-    "pandas>=2.3.1",
+    "numpy<2",
+    "pyarrow>=21.0.0",
+    "seaborn==0.13.2",
+    "setuptools==80.9.0",
+    "tables>=3.9.2",
+    "tsfresh==0.21.0",
 ]

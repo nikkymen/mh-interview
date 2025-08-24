@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "main.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "show",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "show_aggregated_features.py",
+            "console": "integratedTerminal"
         }
     ]
 }

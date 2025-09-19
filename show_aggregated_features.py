@@ -15,43 +15,45 @@ def main():
     parser = argparse.ArgumentParser(description='Visualize features from parquet file')
 
     parser.add_argument('--input', type=str,
-                        default='output/extracted_features_full.parquet',
+                        default='extracted_features_full.parquet',
                         help='Path to the parquet file with features')
 
     args = parser.parse_args()
 
     df = pd.read_parquet(args.input)
 
-    print(df.shape)
+    print(df['video_id'])
 
-    #matching_columns = [col for col in df.columns if col.startswith("AU45_r__")]
+    # print(df.shape)
 
-     # Plot the specific column values
+    # #matching_columns = [col for col in df.columns if col.startswith("AU45_r__")]
 
-    # Check if column exists
+    #  # Plot the specific column values
 
-    column_id = 'AU45_r__number_crossing_m__m_0.5'
-    column = df[column_id]
+    # # Check if column exists
 
-    print(column)
+    # column_id = 'AU45_r__number_crossing_m__m_0.5'
+    # column = df[column_id]
 
-    if column is not None:
-        plt.figure(figsize=(12, 6))
+    # print(column)
 
-        plt.subplot(1, 2, 1)
-        plt.scatter(range(len(df)), column, alpha=0.6, s=10)
-        plt.title(f'Scatter plot of {column_id}')
-        plt.ylabel('Value')
-        plt.xlabel('Index')
+    # if column is not None:
+    #     plt.figure(figsize=(12, 6))
 
-        # Create histogram to show distribution
-        plt.subplot(1, 2, 2)
-        sns.histplot(column, kde=True)
-        plt.title(f'Distribution of {column_id}')
-        plt.xlabel('Value')
+    #     plt.subplot(1, 2, 1)
+    #     plt.scatter(range(len(df)), column, alpha=0.6, s=10)
+    #     plt.title(f'Scatter plot of {column_id}')
+    #     plt.ylabel('Value')
+    #     plt.xlabel('Index')
 
-        plt.tight_layout()
-        plt.show()
+    #     # Create histogram to show distribution
+    #     plt.subplot(1, 2, 2)
+    #     sns.histplot(column, kde=True)
+    #     plt.title(f'Distribution of {column_id}')
+    #     plt.xlabel('Value')
+
+    #     plt.tight_layout()
+    #     plt.show()
 
 if __name__ == "__main__":
     main()

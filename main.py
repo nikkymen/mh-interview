@@ -28,7 +28,7 @@ def main():
 
     parser.add_argument('--data', type=str, default='data/parquet', help='')
     parser.add_argument('--output', type=str, default='output', help='')
-    parser.add_argument('--plots', action=argparse.BooleanOptionalAction, default=True, help='')
+    parser.add_argument('--plots', action=argparse.BooleanOptionalAction, default=False, help='')
     parser.add_argument('--features', action=argparse.BooleanOptionalAction, default=True, help='')
 
     processor = DataProcessor(parser.parse_args())
@@ -176,9 +176,9 @@ class DataProcessor:
         # Create a dataframe suitable for tsfresh
         tsfresh_df = pd.DataFrame()
 
-        common_settings = {} # empty
+        #common_settings = {} # empty
         #common_settings = MinimalFCParameters().data
-        #common_settings = EfficientFCParameters().data
+        common_settings = EfficientFCParameters().data
 
         settings = {}
 

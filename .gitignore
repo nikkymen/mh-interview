@@ -2,3 +2,4 @@ plots
 aggregated_features.csv
 output
 data/csv
+.env

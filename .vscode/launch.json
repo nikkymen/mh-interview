@@ -34,10 +34,18 @@
             "cwd": "llm_predict_transcriptions"
         },
         {
-            "name": "llm_plot",
+            "name": "llm_stats",
             "type": "debugpy",
             "request": "launch",
-            "program": "plot.py",
+            "program": "stats.py",
+            "console": "integratedTerminal",
+            "cwd": "llm_predict_transcriptions"
+        },
+        {
+            "name": "llm_analyze",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "analyze.py",
             "console": "integratedTerminal",
             "cwd": "llm_predict_transcriptions"
         }

@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import json
+import time
+import argparse
 
 from pathlib import Path
 from openai import OpenAI
@@ -27,56 +29,6 @@ def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
             extra_headers={
                 "X-Title": "MH-Interview-App",
             },
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "parameters",
-                    "strict": True,
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "WHO-5": {
-                                "type": "integer",
-                                "description": "Well-being Index",
-                                "minimum": 1,
-                                "maximum": 3
-                            },
-                            "PSS-4": {
-                                "type": "integer",
-                                "description": "Perceived Stress Scale",
-                                "minimum": 1,
-                                "maximum": 3
-                            },
-                            "GAD-7": {
-                                "type": "integer",
-                                "description": "Generalized Anxiety Disorder",
-                                "minimum": 1,
-                                "maximum": 4
-                            },
-                            "PHQ-9": {
-                                "type": "integer",
-                                "description": "Patient Health Questionnaire - Depression",
-                                "minimum": 1,
-                                "maximum": 5
-                            },
-                            "Alienation": {
-                                "type": "integer",
-                                "description": "Degree of Alienation from Studies",
-                                "minimum": 1,
-                                "maximum": 3
-                            },
-                            "Burnout": {
-                                "type": "integer",
-                                "description": "Degree of Burnout",
-                                "minimum": 1,
-                                "maximum": 3
-                            },
-                        },
-                        "required": ["WHO-5", "PSS-4", "GAD-7", "PHQ-9", "Alienation", "Burnout"],
-                        "additionalProperties": False,
-                    },
-                },
-            },
         )
 
         response_content = completion.choices[0].message.content
@@ -84,7 +36,28 @@ def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
         print(response_content)
 
         if response_content:
-            return json.loads(response_content)
+            result = {}
+            for line in response_content.strip().split('\n'):
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip().lower()
+                    if value == "poor":
+                        int_value = 0
+                    elif value == "not poor":
+                        int_value = 1
+                    elif value == "high":
+                        int_value = 1
+                    elif value == "not high":
+                        int_value = 0
+                    else:
+                        int_value = -1
+
+                    result[key] = int_value
+            return result
+
+        # if response_content:
+        #     return json.loads(response_content)
 
         return None
 
@@ -97,7 +70,19 @@ def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
 
 
 def main():
-    api_key = os.getenv("OPENROUTER_API_KEY")
+
+    parser = argparse.ArgumentParser(description='Detection train')
+
+    parser.add_argument('--model', type=str, default='qwen/qwen3-4b:free', help='model id')
+    parser.add_argument('--key', type=str, default='', help='openrouter API key')
+    parser.add_argument('--sleep', type=float, default=0, help='sleep between runs')
+
+    args = parser.parse_args()
+
+    if args.key:
+        api_key = args.key
+    else:
+        api_key = os.getenv("OPENROUTER_API_KEY")
 
     if not api_key:
         print("Error: OPENROUTER_API_KEY environment variable not set.")
@@ -125,16 +110,16 @@ def main():
     # free_llms = [
     #     "deepseek/deepseek-r1-0528:free"
     #     "qwen/qwq-32b:free"
+
+    # "meta-llama/llama-3.3-70b-instruct:free"
+    # "qwen/qwen-2.5-72b-instruct:free"
     # ]
 
-    llms = [
-         "deepseek/deepseek-r1-0528:free"
-    ]
+    # llms = [
+    #      "deepseek/deepseek-r1-0528:free"
+    # ]
 
-    output_path = "predictions/llms.csv"
-
-    if len(llms) == 1:
-        output_path = "predictions/" + llms[0].split('/')[1].split(':')[0] + ".csv"
+    output_path = "predictions2/" + args.model.split('/')[1].split(':')[0] + ".csv"
 
     Path(output_path).parent.mkdir(exist_ok=True)
 
@@ -167,6 +152,7 @@ def main():
     text_files = [f for f in os.listdir(prompts_dir) if f.endswith('.txt')]
     text_files.sort()
 
+    #text_files = ['9234.txt']
 
     # Check if the output file already exists and load it
     if os.path.exists(output_path):
@@ -200,23 +186,16 @@ def main():
         # Initialize row with filename
         row_data = None
 
-        # Query each model and add results to the row
-        for model in llms:
-            #model_key = model.split('/')[1].split(':')[0]  # Extract clean model name
+        # Get model predictions
+        prediction = query(client, args.model, system_prompt, prompt)
 
-            # Get model predictions
-            prediction = query(client, model, system_prompt, prompt)
+        if prediction:
+            row_data = {'id': id}
 
-            if prediction:
-                row_data = {'id': id}
+            # Add model-specific prefix to each parameter
+            for param, value in prediction.items():
+                row_data[param] = value
 
-                # Add model-specific prefix to each parameter
-                for param, value in prediction.items():
-                    #row_data[f"{param}__{model_key}"] = value
-                    row_data[param] = value
-
-        # Add this row to results
-        if row_data:
             results.append(row_data)
 
         # Save progress after each file is processed
@@ -224,6 +203,9 @@ def main():
 
         # Save to CSV (append mode if file exists)
         df.to_csv(output_path, index=False, mode='w')
+
+        if args.sleep:
+            time.sleep(args.sleep)  # To avoid hitting rate limits
 
 if __name__ == "__main__":
     main()

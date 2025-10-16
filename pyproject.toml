@@ -5,6 +5,7 @@ description = "Aggregate features from time series"
 readme = "README.md"
 requires-python = "==3.9.5"
 dependencies = [
+    "docker>=7.1.0",
     "numpy<2",
     "openai>=1.108.0",
     "pyarrow>=21.0.0",

@@ -1,5 +1,6 @@
 plots
 aggregated_features.csv
 output
-data/csv
+csv
+data/
 .env

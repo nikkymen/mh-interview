@@ -12,11 +12,28 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "main",
+            "name": "wav",
             "type": "debugpy",
             "request": "launch",
-            "program": "main.py",
-            "console": "integratedTerminal"
+            "program": "wav.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/prepare"
+        },
+        {
+            "name": "video_ts_features",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "ts_features.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/video_features"
+        },
+        {
+            "name": "openface_features",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "openface_features.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/video_features"
         },
         {
             "name": "show",

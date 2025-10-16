@@ -2,12 +2,12 @@ import pandas as pd
 
 def binarize_data(input_file, output_file, thresholds=None):
     thresholds = {
-        'WHO-5': 35,
-        'PSS-4': 8,
-        'GAD-7': 6,
-        'PHQ-9': 12,
-        'Alienation': 2.4375,
-        'Burnout': 3.35
+        'WHO-5':      35,
+        'PSS-4':      8,
+        'GAD-7':      6,
+        'PHQ-9':      12,
+        'Alienation': 39,
+        'Burnout':    30
     }
 
     df = pd.read_csv(input_file)
@@ -26,4 +26,4 @@ def binarize_data(input_file, output_file, thresholds=None):
     return df_binary
 
 if __name__ == "__main__":
-    binarize_data('actuals_scores.csv', 'actuals_bin.csv')
+    binarize_data('actuals_scores2.csv', 'actuals_bin2.csv')

@@ -97,49 +97,39 @@ def main():
     # https://openrouter.ai/docs#models
     # https://openrouter.ai/settings/integrations
 
-    # llms = [
-    #     "qwen/qwen3-4b:free",
-    #     "mistralai/mistral-small-3.2-24b-instruct:free"
-    #  #   "openai/gpt-oss-20b:free",
-    # ]
+    # Used:
+    # qwen-2.5-72b-instruct:free
+    # meta-llama/llama-3.3-70b-instruct:free
+    # openai/gpt-oss-120b
+
+    # Open:
+
+    # qwen/qwen3-4b:free
+    # qwen/qwq-32b:free
+    # mistralai/mistral-small-3.2-24b-instruct:free
+    # openai/gpt-oss-20b:free
+    # deepseek/deepseek-r1-0528:free
+    # meta-llama/llama-3.3-70b-instruct:free
+
+    # Proprietary:
+
+    # openai/gpt-5
+    # google/gemini-2.5-pro
+    # x-ai/grok-4
+    # mistralai/mistral-large
+    # deepseek/deepseek-r1
+
+    # Not supported:
+    # openai/o3-pro # OpenAI is requiring a key to access this model
+    # anthropic/claude-opus-4.1
 
     # Read the prompt from the file
     with open('system_prompt.txt', 'r') as file:
         system_prompt = file.read().strip()
 
-    # free_llms = [
-    #     "deepseek/deepseek-r1-0528:free"
-    #     "qwen/qwq-32b:free"
-
-    # "meta-llama/llama-3.3-70b-instruct:free"
-    # "qwen/qwen-2.5-72b-instruct:free"
-    # ]
-
-    # llms = [
-    #      "deepseek/deepseek-r1-0528:free"
-    # ]
-
     output_path = "predictions2/" + args.model.split('/')[1].split(':')[0] + ".csv"
 
     Path(output_path).parent.mkdir(exist_ok=True)
-
-    # llms = [
-    #     "openai/gpt-5",
-    #     "google/gemini-2.5-pro"
-    #     "x-ai/grok-4"
-    #     "mistralai/mistral-large"
-    #     "deepseek/deepseek-r1"
-    # ]
-
-    # openai/gpt-5
-    # google/gemini-2.5-pro
-    # x-ai/grok-4
-    # deepseek/deepseek-r1
-    # mistralai/mistral-large
-
-    # Not supported:
-    # openai/o3-pro # OpenAI is requiring a key to access this model
-    # anthropic/claude-opus-4.1
 
     # Get directory path with prompt files
     prompts_dir = "transcripts"

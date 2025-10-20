@@ -1,6 +1,7 @@
 plots
-aggregated_features.csv
 output
-csv
-data/
 .env
+data/wav
+data/video
+data/snapshots
+data/video_features/csv

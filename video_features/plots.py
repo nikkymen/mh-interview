@@ -133,7 +133,7 @@ def plot_data(data: pd.DataFrame,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=str, default='input/parquet')
+    parser.add_argument('--input', type=str, default='../data/video_features/csv')
     parser.add_argument('--output', type=str, default='output/plots')
     parser.add_argument('--crop-start', type=int, default=60)
     parser.add_argument('--crop-end', type=str, default=80)

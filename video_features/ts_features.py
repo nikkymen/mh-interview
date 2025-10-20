@@ -54,6 +54,8 @@ def extract_features_dataframe(df: pd.DataFrame, video_id: str) -> pd.DataFrame:
     #common_settings = MinimalFCParameters().data
     common_settings = EfficientFCParameters().data
 
+    # del common_settings['value_count']
+
     # for col in common_settings:
     #     print(col)
 

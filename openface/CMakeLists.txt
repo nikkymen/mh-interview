@@ -12,8 +12,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/")
 
-set(CMAKE_CONFIG_DIR etc/OpenFace)
-set(CONFIG_DIR "/usr/local/${CMAKE_CONFIG_DIR}")
+set(CONFIG_DIR "./models/openface/")
 add_definitions(-DCONFIG_DIR="${CONFIG_DIR}")
 
 # make sure we'll use OpenBLAS only: there's a header file naming difference between different
@@ -54,91 +53,6 @@ if(${Boost_FOUND})
 else()
     MESSAGE("Boost not found in the system.")
 endif()
-
-
-# Move LandmarkDetector model
-file(GLOB files "lib/local/LandmarkDetector/model/*.txt")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model)
-endforeach()
-
-# Move the hierarchical LandmarkDetector models
-file(GLOB files "lib/local/LandmarkDetector/model/model*")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model)
-	install(DIRECTORY ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model)
-endforeach()
-
-# Move detection validation models
-file(GLOB files "lib/local/LandmarkDetector/model/detection_validation/*.txt")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model/detection_validation)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model/detection_validation)
-endforeach()
-
-# Move patch experts
-file(GLOB files "lib/local/LandmarkDetector/model/patch_experts/*.txt")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model/patch_experts)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model/patch_experts)
-endforeach()
-
-# Move CEN patch experts
-file(GLOB files "lib/local/LandmarkDetector/model/patch_experts/*.dat")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model/patch_experts)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model/patch_experts)
-endforeach()
-
-# Move MTCNN face detector
-file(GLOB files "lib/local/LandmarkDetector/model/mtcnn_detector/*.txt")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model/mtcnn_detector)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model/mtcnn_detector)
-endforeach()
-
-# Move MTCNN face detector
-file(GLOB files "lib/local/LandmarkDetector/model/mtcnn_detector/*.dat")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model/mtcnn_detector)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model/mtcnn_detector)
-endforeach()
-
-# Move Point Distribution models
-file(GLOB files "lib/local/LandmarkDetector/model/pdms/*.txt")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/model/pdms)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/model/pdms)
-endforeach()
-
-# Move OpenCV classifiers
-file(GLOB files "lib/3rdParty/OpenCV3.4/classifiers/*.xml")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/classifiers)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/classifiers)
-endforeach()
-
-# Move AU prediction modules
-file(GLOB files "lib/local/FaceAnalyser/AU_predictors/*.txt")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/AU_predictors)
-	install(FILES ${file} DESTINATION ${CMAKE_CONFIG_DIR}/AU_predictors)
-endforeach()
-
-# Move AU prediction modules
-file(GLOB files "lib/local/FaceAnalyser/AU_predictors/svr*")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/AU_predictors)
-	install(DIRECTORY ${file} DESTINATION ${CMAKE_CONFIG_DIR}/AU_predictors)
-endforeach()
-
-# Move AU prediction modules
-file(GLOB files "lib/local/FaceAnalyser/AU_predictors/svm*")
-foreach(file ${files})
-	file(COPY ${file} DESTINATION ${CMAKE_BINARY_DIR}/bin/AU_predictors)
-	install(DIRECTORY ${file} DESTINATION ${CMAKE_CONFIG_DIR}/AU_predictors)
-endforeach()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)

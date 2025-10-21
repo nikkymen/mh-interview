@@ -447,8 +447,6 @@ void SequenceCapture::CaptureThread()
 
     while(capturing)
     {
-		std::cout << "iter" << std::endl;
-
         double timestamp_curr = 0;
         cv::Mat tmp_frame;
         cv::Mat_<uchar> tmp_gray_frame;

@@ -9,7 +9,7 @@ externalproject_add(
     URL               ${CMAKE_SOURCE_DIR}/externals/OpenBLAS-0.3.21.tar.gz
     PREFIX            ${CMAKE_BINARY_DIR}/openblas
     INSTALL_DIR       ${CMAKE_INSTALL_PREFIX}
-    
+
     TEST_COMMAND      ""
 
     CMAKE_ARGS       -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
@@ -38,6 +38,37 @@ externalproject_add(
     DOWNLOAD_EXTRACT_TIMESTAMP ON
 )
 
+# externalproject_add(
+#     ffmpeg
+#     URL               ${CMAKE_SOURCE_DIR}/externals/FFmpeg-4.4.tar.gz
+#     PREFIX            ${CMAKE_BINARY_DIR}/ffmpeg
+#     INSTALL_DIR       ${CMAKE_INSTALL_PREFIX}
+#     BUILD_IN_SOURCE   1
+
+#     TEST_COMMAND      ""
+
+#     CONFIGURE_COMMAND ./configure --prefix=${CMAKE_INSTALL_PREFIX}
+#                                   --disable-static
+#                                   --enable-shared
+#                                   --disable-programs
+#                                   --disable-doc
+#                                   --disable-debug
+#                                   --enable-nonfree
+#                                   --target_os=linux
+
+#     BUILD_COMMAND     make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+
+#     LOG_DOWNLOAD          TRUE
+#     LOG_UPDATE            TRUE
+#     LOG_CONFIGURE         TRUE
+#     LOG_BUILD             TRUE
+#     LOG_INSTALL           TRUE
+#     LOG_MERGED_STDOUTERR  TRUE
+#     LOG_OUTPUT_ON_FAILURE TRUE
+
+#     DOWNLOAD_EXTRACT_TIMESTAMP ON
+# )
+
 externalproject_add(
     opencv
     URL               ${CMAKE_SOURCE_DIR}/externals/opencv-4.1.0.zip
@@ -53,8 +84,9 @@ externalproject_add(
                      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                      -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
                      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                     -DPKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib/pkgconfig
                      -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON
-                     -DOPENCV_ENABLE_NONFREE=OFF
+                     -DOPENCV_ENABLE_NONFREE=ON
                      -DOPENCV_FORCE_3RDPARTY_BUILD=OFF
                      -DBUILD_LIST=core,imgproc,calib3d,highgui,objdetect,videoio
                      -DBUILD_SHARED_LIBS=OFF
@@ -68,6 +100,7 @@ externalproject_add(
                      -DBUILD_opencv_python3=OFF
                      -DBUILD_opencv_gapi=OFF
                      -DBUILD_OPENEXR=OFF
+                     -DWITH_FFMPEG=ON
                      -DWITH_GDAL=OFF
                      -DWITH_CUDA=OFF
                      -DWITH_IPP=OFF
@@ -98,6 +131,8 @@ externalproject_add(
     LOG_OUTPUT_ON_FAILURE TRUE
 
     DOWNLOAD_EXTRACT_TIMESTAMP ON
+
+  #  DEPENDS ffmpeg
 )
 
 externalproject_add(
@@ -138,7 +173,7 @@ externalproject_add(
 externalproject_add(
     boost
     URL ${CMAKE_SOURCE_DIR}/externals/boost-1.88.0-cmake.tar.gz
-    PREFIX ${CMAKE_BINARY_DIR}/${PROJECT_NAME} # Ensure unique prefix for each target
+    PREFIX ${CMAKE_BINARY_DIR}/boost
     INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
 
     CMAKE_ARGS

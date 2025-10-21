@@ -1,7 +1,9 @@
-plots
-output
 .env
+plots
+build
+output
 data/wav
 data/video
 data/snapshots
 data/video_features/csv
+data/audio_features/csv

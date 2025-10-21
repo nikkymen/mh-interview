@@ -1,0 +1,72 @@
+{
+  "version": 10,
+  "cmakeMinimumRequired": {"major": 3, "minor": 31, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "environment": {
+        "OpenBLAS_HOME": "${sourceDir}/build/install"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_PREFIX_PATH": "${sourceDir}/build/install",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install"
+      }
+    },
+    {
+      "name": "externals",
+      "inherits": "base",
+      "cacheVariables": {
+        "EXTERNALS": true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "targets": ["install"]
+    },
+    {
+      "name": "externals",
+      "configurePreset": "externals"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "externals",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "externals"
+        },
+        {
+          "type": "build",
+          "name": "externals"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "release"
+        },
+        {
+          "type": "build",
+          "name": "release"
+        }
+      ]
+    }
+  ]
+}

@@ -60,12 +60,12 @@ def process_videos(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--video-root", type=Path, default=Path("../data/video"))
-    parser.add_argument("--output-root", type=Path, default=Path("../data/video_features/csv"))
+    parser.add_argument("--input", type=Path, default=Path("data/video"))
+    parser.add_argument("--output", type=Path, default=Path("data/video_features/csv"))
     parser.add_argument(
         "--feature-extraction",
         type=Path,
-        default=Path("FeatureExtraction"),
+        default=Path("openface/build/install/bin/FeatureExtraction"),
         help="Path to OpenFace FeatureExtraction executable",
     )
     parser.add_argument("--max-workers", type=int, default=8)
@@ -80,13 +80,13 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
-    videos = find_videos(args.video_root, tuple(args.suffixes))
+    videos = find_videos(args.input, tuple(args.suffixes))
 
     if not videos:
-        raise SystemExit(f"No videos found in {args.video_root}")
-    args.output_root.mkdir(parents=True, exist_ok=True)
+        raise SystemExit(f"No videos found in {args.input}")
+    args.output.mkdir(parents=True, exist_ok=True)
 
-    process_videos(videos, args.feature_extraction, args.output_root, args.max_workers)
+    process_videos(videos, args.feature_extraction, args.output, args.max_workers)
 
 
 if __name__ == "__main__":

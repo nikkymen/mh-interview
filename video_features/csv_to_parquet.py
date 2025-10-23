@@ -65,8 +65,8 @@ def convert_csv_to_parquet(
 
 def main() -> None:
     """Main function to run the conversion."""
-    csv_dir = Path("data/csv")
-    parquet_dir = Path("data/parquet")
+    csv_dir = Path("data/video_features/csv/")
+    parquet_dir = Path("data/video_features/parquet/")
 
     try:
         converted_files = convert_csv_to_parquet(csv_dir, parquet_dir)

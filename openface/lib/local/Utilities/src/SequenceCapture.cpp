@@ -440,8 +440,13 @@ void SequenceCapture::CaptureThread()
     // Calculate frame skip for video files
     double skip_ratio = 1.0;
 
-    if (!is_image_seq && fps > 0)
-        skip_ratio = fps / desired_fps;
+	if (!is_image_seq)
+	{
+		if(fps > desired_fps)
+        	skip_ratio = fps / desired_fps;
+		else
+			desired_fps = fps;
+	}
 
     int actual_frame_count = 0;
 
@@ -480,10 +485,6 @@ void SequenceCapture::CaptureThread()
                     tmp_frame = cv::Mat();
                     capturing = false;
                 }
-                else
-                {
-                    frame_num_int++;
-                }
             }
 
             // Recording the timestamp based on desired FPS
@@ -505,14 +506,11 @@ void SequenceCapture::CaptureThread()
             timestamp_curr = 0;
         }
 
-        if (!tmp_frame.empty())
-        {
-            actual_frame_count++;
-            // Set the grayscale frame
-            ConvertToGrayscale_8bit(tmp_frame, tmp_gray_frame);
-            capture_queue.push(std::make_tuple(timestamp_curr, tmp_frame, tmp_gray_frame));
-        }
-    }
+		actual_frame_count++;
+		// Set the grayscale frame
+		ConvertToGrayscale_8bit(tmp_frame, tmp_gray_frame);
+		capture_queue.push(std::make_tuple(timestamp_curr, tmp_frame, tmp_gray_frame));
+    } // while
 }
 
 cv::Mat SequenceCapture::GetNextFrame()

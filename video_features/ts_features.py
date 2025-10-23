@@ -5,8 +5,8 @@ import os
 import glob
 import pandas as pd
 import argparse
-import pathlib
 
+from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.dataframe_functions import impute
 
@@ -176,14 +176,14 @@ def extract_features_dataframe(df: pd.DataFrame, id: str) -> pd.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=str, default='data/video_features/parquet/')
-    parser.add_argument('--output', type=str, default='data/video_features/video_features.parquet')
+    parser.add_argument('--input', type=Path, default='data/video_features/parquet/')
+    parser.add_argument('--output', type=Path, default='data/video_features/tsfresh/')
 
     args = parser.parse_args()
 
     features = []
 
-    os.makedirs(pathlib.Path(args.output).parent, exist_ok=True)
+    os.makedirs(args.output, exist_ok=True)
 
     data_files = glob.glob(os.path.join(args.input, "*"))
 
@@ -192,14 +192,22 @@ def main():
 
     for file_path in data_files:
         video_id = os.path.splitext(os.path.basename(file_path))[0]
+        print(video_id)
+
+        save_path: Path = args.output / f'{video_id}.parquet'
+
+        if save_path.exists():
+            continue
+
         df = load_dataframe(file_path)
 
-        print(video_id)
         df_features = extract_features_dataframe(df, video_id)
+        df_features.to_parquet(save_path)
+
         features.append(df_features)
 
     # Save result
-    pd.concat(features).to_parquet(args.output)
+    pd.concat(features).to_parquet(args.output / 'vf_tsfresh.parquet')
 
 if __name__ == "__main__":
     main()

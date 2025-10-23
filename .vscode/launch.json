@@ -23,9 +23,8 @@
             "name": "video_ts_features",
             "type": "debugpy",
             "request": "launch",
-            "program": "ts_features.py",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/video_features"
+            "program": "video_features/ts_features.py",
+            "console": "integratedTerminal"
         },
         {
             "name": "openface_features",

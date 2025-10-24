@@ -1,6 +1,9 @@
 import os
 
-#os.environ["NUMBA_DISABLE_CUDA"] = "1"
+os.environ["NUMBA_DISABLE_CUDA"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 import glob
 import pandas as pd
@@ -155,7 +158,8 @@ def extract_features_dataframe(df: pd.DataFrame, id: str) -> pd.DataFrame:
         column_sort='timestamp',
         column_kind='kind',
         column_value='value',
-        impute_function=impute
+        impute_function=impute,
+        n_jobs = 1
     )
 
     if not isinstance(features, pd.DataFrame):
@@ -177,13 +181,15 @@ def extract_features_dataframe(df: pd.DataFrame, id: str) -> pd.DataFrame:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', type=Path, default='data/video_features/parquet/')
-    parser.add_argument('--output', type=Path, default='data/video_features/tsfresh/')
+    parser.add_argument('--cache', type=Path, default='data/video_features/tsfresh/')
+    parser.add_argument("--output", type=Path, default=Path("data/features/vf_tsfresh.parquet"))
 
     args = parser.parse_args()
 
     features = []
 
-    os.makedirs(args.output, exist_ok=True)
+    os.makedirs(args.output.parent, exist_ok=True)
+    os.makedirs(args.cache, exist_ok=True)
 
     data_files = glob.glob(os.path.join(args.input, "*"))
 
@@ -192,22 +198,28 @@ def main():
 
     for file_path in data_files:
         video_id = os.path.splitext(os.path.basename(file_path))[0]
-        print(video_id)
 
-        save_path: Path = args.output / f'{video_id}.parquet'
-
-        if save_path.exists():
-            continue
+        save_path: Path = args.cache / f'{video_id}.parquet'
 
         df = load_dataframe(file_path)
 
-        df_features = extract_features_dataframe(df, video_id)
-        df_features.to_parquet(save_path)
+        print(f'{video_id}: {df.shape} shape')
+
+        if save_path.exists():
+            df_features = pd.read_parquet(save_path)
+        else:
+            df_features = extract_features_dataframe(df, video_id)
+            df_features.to_parquet(save_path)
 
         features.append(df_features)
 
     # Save result
-    pd.concat(features).to_parquet(args.output / 'vf_tsfresh.parquet')
+
+    features =  pd.concat(features)
+
+    features.to_parquet(args.output)
+
+    print(f'Saved features {features.shape}: {args.output}')
 
 if __name__ == "__main__":
     main()

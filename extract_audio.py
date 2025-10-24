@@ -1,7 +1,9 @@
+import argparse
 import subprocess
+import multiprocessing
+
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing
 
 def extract_wav_from_video(input_file: Path, output_dir: Path):
     """
@@ -47,25 +49,28 @@ def extract_wav_from_video(input_file: Path, output_dir: Path):
 
 
 def main():
-    # Define input and output directories
-    input_dir = Path("input/video")
-    output_dir = Path("output/wav")
 
-    (output_dir / "raw").mkdir(parents=True, exist_ok=True)
-    (output_dir / "norm").mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=Path, default=Path("data/video/"))
+    parser.add_argument("--output", type=Path, default=Path("data/audio/"))
+
+    args = parser.parse_args()
+
+    (args.output / "raw").mkdir(parents=True, exist_ok=True)
+    (args.output / "norm").mkdir(parents=True, exist_ok=True)
 
     # Check if input directory exists
-    if not input_dir.exists():
-        print(f"Error: Input directory {input_dir} does not exist")
+    if not args.input.exists():
+        print(f"Error: Input directory {args.input} does not exist")
         return
 
     # Process all video files in the input directory
     video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm'}
-    video_files = [f for f in input_dir.iterdir()
+    video_files = [f for f in args.input.iterdir()
                    if f.is_file() and f.suffix.lower() in video_extensions]
 
     if not video_files:
-        print(f"No video files found in {input_dir}")
+        print(f"No video files found in {args.input}")
         return
 
     print(f"Found {len(video_files)} video file(s) to process")
@@ -78,7 +83,7 @@ def main():
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         futures = {
-            executor.submit(extract_wav_from_video, video_file, output_dir): video_file
+            executor.submit(extract_wav_from_video, video_file, args.output): video_file
             for video_file in video_files
         }
 
@@ -94,7 +99,6 @@ def main():
                 print(f"Unexpected error processing {video_file.name}: {e}")
 
     print("\nAll files processed!")
-
 
 if __name__ == "__main__":
     main()

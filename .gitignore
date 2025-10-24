@@ -2,8 +2,9 @@
 plots
 build
 output
-data/wav
 data/video
+data/audio
 data/snapshots
 data/video_features/csv
+data/video_features/tsfresh
 data/audio_features/csv

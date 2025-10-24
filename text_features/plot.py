@@ -57,7 +57,7 @@ for i, metric in enumerate(metrics):
 
     # Add to results
     new_row = pd.DataFrame({'Metric': [metric], 'Accuracy': [accuracy],
-                           'Weighted F1': [f1], 'Cohen Kappa': [kappa]})
+                            'Weighted F1': [f1], 'Cohen Kappa': [kappa]})
     results = pd.concat([results, new_row], ignore_index=True)
 
     # Get classification report

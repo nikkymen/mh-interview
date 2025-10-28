@@ -13,11 +13,11 @@ def main():
     parser = argparse.ArgumentParser(description='Visualize features from parquet file')
 
     parser.add_argument('--features', type=str,
-                        default='audio_features_fake.csv',
+                        default='data/features/af_opensmile.parquet',
                         help='Path to the parquet file with features')
 
     parser.add_argument('--actuals', type=str,
-                        default='llm_predict_transcriptions/actuals_bin.csv',
+                        default='data/actuals.csv',
                         help='Path to the parquet file with features')
 
     args = parser.parse_args()
@@ -50,11 +50,11 @@ def main():
     for target in target_columns:
         y = actuals_aligned[target]
 
-        relevance_tables.append(calculate_relevance_table(features_aligned, y, ml_task='classification', fdr_level = 0.05))
+        relevance_tables.append(calculate_relevance_table(features_aligned, y, ml_task='classification', fdr_level = 0.05, hypotheses_independent = True))
 
     relevance_table = combine_relevance_tables(relevance_tables)
 
-    top_features = relevance_table.nsmallest(10, 'p_value')
+    top_features = relevance_table.nsmallest(25, 'p_value')
     print(top_features[['p_value', 'relevant']])
 
 if __name__ == "__main__":

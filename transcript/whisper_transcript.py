@@ -4,8 +4,14 @@ import os
 import time
 import re
 
+from pathlib import Path
+
 from transformers.pipelines import pipeline
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
+
+def extract_transcription(file_path: Path) -> str:
+    #TODO
+    return 'TODO'
 
 def format_timestamp(seconds: float) -> str:
     """Converts seconds to MM:SS.ss format."""

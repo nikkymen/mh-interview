@@ -27,6 +27,13 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "relevance",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "relevance.py",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "openface_features",
             "type": "debugpy",
             "request": "launch",

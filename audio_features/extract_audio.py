@@ -4,8 +4,9 @@ import multiprocessing
 
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Tuple
 
-def extract_wav_from_video(input_file: Path, output_dir: Path):
+def extract_wav_from_video(input_file: Path, output_dir: Path) -> Tuple[Path, Path]:
     """
     Extract raw and normalized WAV files from a video file.
 
@@ -20,7 +21,7 @@ def extract_wav_from_video(input_file: Path, output_dir: Path):
 
     # Skip if both WAV files already exist
     if raw_wav.exists() and norm_wav.exists():
-        return f"Skipped {input_file.name} (WAV files already exist)"
+        return raw_wav, norm_wav
 
     # Extract raw WAV using ffmpeg
     if not raw_wav.exists():
@@ -45,8 +46,7 @@ def extract_wav_from_video(input_file: Path, output_dir: Path):
             "compand", "0.3,1", "-90,-90,-70,-70,-60,-20,0,0", "-5", "0", "0.2"
         ], check=True, capture_output=True)
 
-    return f"Completed processing {input_file.name}"
-
+    return raw_wav, norm_wav
 
 def main():
 

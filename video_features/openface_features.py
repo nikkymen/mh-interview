@@ -1,10 +1,10 @@
 import argparse
 import subprocess
+import pandas as pd
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterable, Sequence
-
 
 def find_videos(root: Path, suffixes: Sequence[str]) -> list[Path]:
     return [path for path in root.glob("**/*") if path.suffix.lower() in suffixes and path.is_file()]
@@ -77,6 +77,9 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+def extract_vf_openface(video_path: Path) -> pd.DataFrame:
+    # TODO
+    return pd.DataFrame()
 
 def main():
     args = parse_args()
@@ -88,7 +91,5 @@ def main():
 
     process_videos(videos, args.feature_extraction, args.output, args.max_workers)
 
-
 if __name__ == "__main__":
     main()
-# ...existing code...

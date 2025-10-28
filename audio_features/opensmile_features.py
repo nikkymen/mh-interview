@@ -17,7 +17,7 @@ feature_extractor.process.multiprocessing = True
 
 #features = fe.process_file('test.wav')
 
-def extract_af_opensmile_from_video(input: Path) -> pd.DataFrame:
+def extract_af_opensmile(input: Path) -> pd.DataFrame:
     # TODO
     return pd.DataFrame()
 

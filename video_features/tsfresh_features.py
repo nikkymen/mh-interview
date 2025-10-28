@@ -13,16 +13,6 @@ from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.dataframe_functions import impute
 
-COLUMNS = ['success',
-           'gaze_angle_x', 'gaze_angle_y',
-           'pose_Rx', 'pose_Ry', 'pose_Rz',
-           'AU01_r', 'AU02_r', 'AU04_r',
-           'AU05_r', 'AU06_r', 'AU07_r',
-           'AU09_r', 'AU10_r', 'AU12_r',
-           'AU14_r', 'AU15_r', 'AU17_r',
-           'AU20_r', 'AU23_r', 'AU25_r',
-           'AU26_r', 'AU45_r']
-
 GAZE_COLS = ["gaze_angle_x", "gaze_angle_y"]
 POSE_COLS = ["pose_Rx", "pose_Ry", "pose_Rz"]
 AU_COLS = ['AU01_r', 'AU02_r', 'AU04_r',
@@ -33,10 +23,6 @@ AU_COLS = ['AU01_r', 'AU02_r', 'AU04_r',
            'AU26_r', 'AU45_r']
 
 COLUMNS = GAZE_COLS + POSE_COLS + AU_COLS
-
-test_stats = {
-    "mean": None
-}
 
 base_stats = {
     "mean": None,
@@ -95,26 +81,8 @@ au_specific = {
     "AU15": { **au_common, "range_count": [{"min":1.0,"max":5.0}] },
 }
 
-normalize = [
-    'number_peaks',
-    'number_crossing_m',
-    'count_above_mean',
-    'count_below_mean',
-    'range_count',
-    'absolute_sum_of_changes',
-    'sum_values'
-]
 
 kind_to_fc_parameters = {}
-
-# for c in GAZE_COLS:
-#     kind_to_fc_parameters[c] = {**test_stats}
-
-# for c in POSE_COLS:
-#     kind_to_fc_parameters[c] = {**test_stats}
-
-# for c in AU_COLS:
-#     kind_to_fc_parameters[c] = {**test_stats}
 
 for c in GAZE_COLS:
     kind_to_fc_parameters[c] = {**base_stats, **dyn_stats}
@@ -124,6 +92,20 @@ for c in POSE_COLS:
 
 for c in AU_COLS:
     kind_to_fc_parameters[c] = au_specific.get(c, au_common)
+
+# test_stats = {
+#     "mean": None
+# }
+
+normalize = [
+    'number_peaks',
+    'number_crossing_m',
+    'count_above_mean',
+    'count_below_mean',
+    'range_count',
+    'absolute_sum_of_changes',
+    'sum_values'
+]
 
 def load_dataframe(file_path: str) -> pd.DataFrame:
     file_extension = os.path.splitext(file_path)[1].lower()
@@ -138,7 +120,7 @@ def load_dataframe(file_path: str) -> pd.DataFrame:
     df.reset_index(drop=True, inplace=True)
     return df
 
-def extract_features_dataframe(df: pd.DataFrame, id: str) -> pd.DataFrame:
+def extract_vf_tsfresh(df: pd.DataFrame, id: str) -> pd.DataFrame:
 
     # Create a dataframe suitable for tsfresh
     tsfresh_df = pd.DataFrame()
@@ -208,7 +190,7 @@ def main():
         if save_path.exists():
             df_features = pd.read_parquet(save_path)
         else:
-            df_features = extract_features_dataframe(df, video_id)
+            df_features = extract_vf_tsfresh(df, video_id)
             df_features.to_parquet(save_path)
 
         features.append(df_features)

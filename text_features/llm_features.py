@@ -7,7 +7,6 @@ import argparse
 from pathlib import Path
 from openai import OpenAI
 
-
 def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
     """
     Sends a prompt to a specified model via the OpenRouter API and prints the response.
@@ -68,6 +67,9 @@ def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
         print("-" * (len(model_name) + 22))
         print("\n")
 
+def extract_tf_llm(prompt: str, model_name: str) -> pd.DataFrame:
+    # TODO
+    return pd.DataFrame()
 
 def main():
 

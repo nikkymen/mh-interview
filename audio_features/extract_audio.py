@@ -23,6 +23,9 @@ def extract_wav_from_video(input_file: Path, output_dir: Path) -> Tuple[Path, Pa
     if raw_wav.exists() and norm_wav.exists():
         return raw_wav, norm_wav
 
+    raw_wav.parent.mkdir(parents=True, exist_ok=True)
+    norm_wav.parent.mkdir(parents=True, exist_ok=True)
+
     # Extract raw WAV using ffmpeg
     if not raw_wav.exists():
         subprocess.run([

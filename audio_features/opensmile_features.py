@@ -13,18 +13,20 @@ feature_extractor = opensmile.Smile(
 feature_extractor.process.num_workers = 16
 feature_extractor.process.multiprocessing = True
 
-#print(feature_extractor.feature_names)
-
-#features = fe.process_file('test.wav')
-
 def extract_af_opensmile(input: Path) -> pd.DataFrame:
-    # TODO
-    return pd.DataFrame()
+
+    features = feature_extractor.process_file(str(input))
+    features = features.reset_index()
+
+    del features['file']
+    del features['start']
+    del features['end']
+
+    return features
 
 def extract_af_opensmile_from_dir(input: Path) -> pd.DataFrame:
 
     features = feature_extractor.process_folder(str(input))
-
     features = features.reset_index()
 
     features['video_id'] = features['file'].apply(lambda x: Path(x).stem)

@@ -1,12 +1,12 @@
 [project]
-name = "mh-interview"
+name = "mental-wellbeing"
 version = "0.1.0"
-description = "Mental health analysis from video interview"
+description = "Mental wellbeing analysis"
 readme = "README.md"
 requires-python = "==3.9.5"
 dependencies = [
     "numpy==1.26.4",
-    "openai==2.3.0",
+#    "openai==2.3.0",
     "pyarrow==21.0.0",
     "seaborn==0.13.2",
     "setuptools==80.9.0",
@@ -14,10 +14,9 @@ dependencies = [
     "tsfresh==0.21.0",
     "opensmile==2.6.0",
     "pyloudnorm==0.1.1",
-    "soundfile==0.13.1",
-    "accelerate==1.8.1",
-    "datasets[audio]==4.0.0",
-    "transformers==4.53.2",
-    "opencv-python==4.11.0.86",
-    "cmake==4.1.0",
+#    "soundfile==0.13.1",
+#    "accelerate==1.8.1",
+#    "datasets[audio]==4.0.0",
+#    "transformers==4.53.2",
+#    "opencv-python==4.11.0.86"
 ]

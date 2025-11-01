@@ -71,6 +71,16 @@
             "program": "analyze.py",
             "console": "integratedTerminal",
             "cwd": "llm_predict_transcriptions"
+        },
+        {
+            "name": "main",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "get_features.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--input", "/data/Интервью/7192.mp4_"
+            ]
         }
     ]
 }

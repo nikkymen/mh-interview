@@ -9,6 +9,8 @@ from pathlib import Path
 from transformers.pipelines import pipeline
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
+ModelPath = "models/whisper-large-v3-russian"
+
 def extract_transcription(file_path: Path) -> str:
     #TODO
     return 'TODO'
@@ -19,24 +21,34 @@ def format_timestamp(seconds: float) -> str:
     remaining_seconds = seconds % 60
     return f"{minutes:02}:{remaining_seconds:05.2f}"
 
-torch_dtype = torch.bfloat16 # set your preferred type here
+torch_dtype = torch.bfloat16
 
 device = 'cpu'
+
 if torch.cuda.is_available():
     device = 'cuda'
-elif torch.backends.mps.is_available():
-    device = 'mps'
-    setattr(torch.distributed, "is_initialized", lambda : False) # monkey patching
+
 device = torch.device(device)
 
 print(f"Using device: {device}")
 
+attn_impl = "flash_attention_2" if device.type == "cuda" else "eager"
+
 whisper = WhisperForConditionalGeneration.from_pretrained(
-    "antony66/whisper-large-v3-russian", torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True,
-    attn_implementation="flash_attention_2"
+    ModelPath,
+    torch_dtype=torch_dtype,
+    low_cpu_mem_usage=True,
+    use_safetensors=True,
+    attn_implementation=attn_impl,
+    local_files_only=True,
 )
 
-processor = WhisperProcessor.from_pretrained("antony66/whisper-large-v3-russian")
+# whisper = WhisperForConditionalGeneration.from_pretrained(
+#     "antony66/whisper-large-v3-russian", torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True,
+#     attn_implementation="flash_attention_2"
+# )
+
+processor = WhisperProcessor.from_pretrained(ModelPath, local_files_only=True)
 
 asr_pipeline = pipeline(
     "automatic-speech-recognition",

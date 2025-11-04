@@ -81,7 +81,6 @@ au_specific = {
     "AU15": { **au_common, "range_count": [{"min":1.0,"max":5.0}] },
 }
 
-
 kind_to_fc_parameters = {}
 
 for c in GAZE_COLS:
@@ -184,8 +183,6 @@ def main():
         save_path: Path = args.cache / f'{video_id}.parquet'
 
         df = load_dataframe(file_path)
-
-        print(f'{video_id}: {df.shape} shape')
 
         if save_path.exists():
             df_features = pd.read_parquet(save_path)

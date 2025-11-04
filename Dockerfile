@@ -19,6 +19,9 @@ WORKDIR /app
 
 COPY uv.lock .
 COPY pyproject.toml .
+
+RUN uv sync --locked
+
 COPY get_features.py .
 COPY audio_features/extract_audio.py ./audio_features/
 COPY audio_features/opensmile_features.py ./audio_features/
@@ -26,8 +29,6 @@ COPY video_features/openface_features.py ./video_features/
 COPY video_features/tsfresh_features.py ./video_features/
 COPY text_features/llm_features.py ./text_features/
 COPY transcript/whisper_transcript.py ./transcript/
-
-RUN uv sync --locked
 
 #TODO add models
 

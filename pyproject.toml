@@ -14,9 +14,13 @@ dependencies = [
     "tsfresh==0.21.0",
     "opensmile==2.6.0",
     "pyloudnorm==0.1.1",
-#    "soundfile==0.13.1",
-#    "accelerate==1.8.1",
-#    "datasets[audio]==4.0.0",
-#    "transformers==4.53.2",
+    "soundfile==0.13.1",
+    "accelerate==1.8.1",
+    "datasets[audio]==4.0.0",
+    "transformers==4.53.2",
+    "flash-attn==2.8.3"
 #    "opencv-python==4.11.0.86"
 ]
+
+[tool.uv.extra-build-dependencies]
+flash-attn = ["torch"]

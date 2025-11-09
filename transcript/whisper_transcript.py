@@ -12,15 +12,33 @@ from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
 ModelPath = "models/whisper-large-v3-russian"
 
-torch_dtype = torch.bfloat16
-device = 'cpu'
+def has_ampere_or_newer() -> bool:
+    """Check if GPU has compute capability 8.0+ (Ampere or newer)."""
+    if not torch.cuda.is_available():
+        return False
+
+    # Get compute capability of the first GPU
+    major, minor = torch.cuda.get_device_capability(0)
+    compute_capability = major + minor / 10
+
+    # Ampere architecture starts at compute capability 8.0
+    return compute_capability >= 8.0
 
 if torch.cuda.is_available():
     device = 'cuda'
+else:
+    device = 'cpu'
+
+if torch.cuda.is_available() and has_ampere_or_newer():
+    torch_dtype = torch.bfloat16
+elif torch.cuda.is_available():
+    torch_dtype = torch.float16
+else:
+    torch_dtype = torch.float32
 
 device = torch.device(device)
 
-attn_impl = "flash_attention_2" if device.type == "cuda" else "eager"
+attn_impl = "flash_attention_2" if (device.type == "cuda" and has_ampere_or_newer()) else "eager"
 
 def format_timestamp(seconds: float) -> str:
     """Converts seconds to MM:SS.ss format."""
@@ -82,11 +100,6 @@ def extract_transcriptions(input: Path, output: Path) -> str:
         local_files_only=True,
     )
 
-# whisper = WhisperForConditionalGeneration.from_pretrained(
-#     "antony66/whisper-large-v3-russian", torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True,
-#     attn_implementation="flash_attention_2"
-# )
-
     processor = WhisperProcessor.from_pretrained(ModelPath, local_files_only=True)
 
     asr_pipeline = pipeline(
@@ -102,7 +115,6 @@ def extract_transcriptions(input: Path, output: Path) -> str:
         device=device,
     )
     return 'TODO'
-
 
 # Directory containing WAV files
 # input_dir = 'data_new'
@@ -169,7 +181,7 @@ def main():
     parser.add_argument('--input', type=Path, default='data/video_features/parquet/')
     parser.add_argument("--output", type=Path, default=Path("data/features/vf_tsfresh.parquet"))
 
-    extract_transcription(Path('/projects/psyco/9778.wav'))
+    extract_transcription(Path('/home/nik/projects/psychos/interview/WIN_20250707_19_05_24_Pro/sample_002_01.wav'))
 
 if __name__ == "__main__":
     main()

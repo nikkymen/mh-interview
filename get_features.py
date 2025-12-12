@@ -9,25 +9,21 @@ import platform
 import sys
 import traceback
 import time
-from contextlib import contextmanager
+import torch
 
-try:
-    import GPUtil
-    GPU_AVAILABLE = True
-except ImportError:
-    GPU_AVAILABLE = False
+from contextlib import contextmanager
 
 from pathlib import Path
 from datetime import datetime
 
-# from video_features.openface_features import extract_vf_openface
-# from video_features.tsfresh_features import extract_vf_tsfresh
+from video_features.openface_features import extract_vf_openface
+from video_features.tsfresh_features import extract_vf_tsfresh
 
 from audio_features.extract_audio import extract_wav_from_video
 from audio_features.opensmile_features import extract_af_opensmile
-# from transcript.whisper_transcript import extract_transcription
+from transcript.whisper_transcript import extract_transcription
 
-# from text_features.llm_features import extract_tf_llm
+from text_features.llm_features import extract_tf_llm
 
 logging.basicConfig(format='[%(asctime)s] %(name)-15.15s [%(levelname)-8.8s]  %(message)s')
 
@@ -55,6 +51,15 @@ def log_system_info():
 
     logger.info(f"Working dir: {os.path.dirname(os.path.realpath(__file__))}")
 
+    scan_dir = Path("/data/models")
+    if scan_dir.exists():
+        logger.info(f"Contents of {scan_dir}:")
+        for item in scan_dir.rglob("*"):
+            if item.is_dir():
+                logger.info(f"  Dir:  {item}")
+    else:
+        logger.info(f"Directory {scan_dir} does not exist")
+
     # CPU Info
     logger.info(f"CPU Count (logical): {psutil.cpu_count(logical=True)}")
     logger.info(f"CPU Count (physical): {psutil.cpu_count(logical=False)}")
@@ -70,21 +75,24 @@ def log_system_info():
     logger.info(f"RAM Used: {ram.used / (1024**3):.2f} GB ({ram.percent}%)")
 
     # GPU Info
-    if GPU_AVAILABLE:
-        try:
-            gpus = GPUtil.getGPUs()
-            if gpus:
-                for i, gpu in enumerate(gpus):
-                    logger.info(f"GPU {i}: {gpu.name}")
-                    logger.info(f"  Memory Total: {gpu.memoryTotal} MB")
-                    logger.info(f"  Memory Used: {gpu.memoryUsed} MB ({gpu.memoryUtil*100:.1f}%)")
-                    logger.info(f"  GPU Load: {gpu.load*100:.1f}%")
-            else:
-                logger.info("No GPU detected")
-        except Exception as e:
-            logger.warning(f"Could not get GPU info: {e}")
+    if torch.cuda.is_available():
+        logger.info("CUDA is available")
     else:
-        logger.info("GPUtil not installed, skipping GPU info")
+        logger.info("CUDA is NOT available")
+
+    try:
+        import GPUtil
+        gpus = GPUtil.getGPUs()
+        if gpus:
+            for i, gpu in enumerate(gpus):
+                logger.info(f"GPU {i}: {gpu.name}")
+                logger.info(f"  Memory Total: {gpu.memoryTotal} MB")
+                logger.info(f"  Memory Used: {gpu.memoryUsed} MB ({gpu.memoryUtil*100:.1f}%)")
+                logger.info(f"  GPU Load: {gpu.load*100:.1f}%")
+        else:
+            logger.info("No GPU detected")
+    except Exception as e:
+        logger.warning(f"Could not get GPU info: {e}")
 
     # Disk Info (current directory)
     disk = shutil.disk_usage(os.getcwd())
@@ -97,7 +105,7 @@ def log_system_info():
     logger.info(f"Python: {platform.python_version()}")
     logger.info("="*50)
 
-def main():
+def get_features():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--input", type=Path, required=False)
@@ -121,9 +129,15 @@ def main():
 
     logger.info(f'output_path: {str(output_path)}')
 
+    file_handler.flush()
+
     log_system_info()
 
+    file_handler.flush()
+
     env_input = os.getenv("UNIP_PIPELINE_INPUT")
+
+    logger.info(f'UNIP_PIPELINE_INPUT: {env_input}')
 
     input_path = args.input or (Path(env_input) if env_input else None)
     if not input_path:
@@ -136,8 +150,13 @@ def main():
         logger.info(f'Файл не существует: {str(input_path)}.')
         return 1
 
-    #video_tracks: pd.DataFrame = extract_vf_openface(args.input)
-    #vf_tsfresh: pd.DataFrame = extract_vf_tsfresh(video_tracks, 'id')
+    with log_timing('Извлечение видеотреков'):
+        video_tracks: pd.DataFrame = extract_vf_openface(input_path)
+        logger.info(f'video_tracks shape: {video_tracks.shape}')
+
+    with log_timing('Извлечение видеопризнаков'):
+        vf_tsfresh: pd.DataFrame = extract_vf_tsfresh(video_tracks, 'id')
+        logger.info(f'vf_tsfresh shape: {vf_tsfresh.shape}')
 
     temp_dir = tempfile.TemporaryDirectory()
     temp_path = Path(temp_dir.name)
@@ -145,22 +164,50 @@ def main():
     with log_timing('Извлечение аудиодорожек'):
         wav_raw, wav_norm = extract_wav_from_video(input_path, temp_path)
 
-    with log_timing('Извлечение аудиопризнаков'):
-        af_opensmile: pd.DataFrame = extract_af_opensmile(wav_raw)
+    file_handler.flush()
 
-    #transcription: str = extract_transcription(wav_norm)
+    af_opensmile = pd.DataFrame()
+
+    with log_timing('Извлечение аудиопризнаков'):
+        af_opensmile = extract_af_opensmile(wav_raw)
+
+    logger.info(f'af_opensmile shape: {af_opensmile.shape}')
+
+    file_handler.flush()
+
+    with log_timing('Транскрипция'):
+        transcription: str = extract_transcription(wav_norm, Path("/data/models/whisper-large-v3-russian"))
+
+    logger.info(transcription)
+
+    file_handler.flush()
 
     temp_dir.cleanup()
 
-    # tf_llm_1: pd.DataFrame = extract_tf_llm(transcription, 'llama-3.3-70b-instruct')
-    # tf_llm_2: pd.DataFrame = extract_tf_llm(transcription, 'gpt-oss-120b')
-    # tf_llm_3: pd.DataFrame = extract_tf_llm(transcription, 'qwen-2.5-72b-instruct')
+    tf_llm_1 = pd.DataFrame()
+
+    with log_timing('LLM Qwen2.5'):
+        tf_llm_1 = extract_tf_llm(transcription, '/data/models/llm/Qwen2.5-72B-Instruct-Q6_K-00001-of-00002.gguf', 'qwen')
+
+    logger.info(f'{tf_llm_1}')
+
+    tf_llm_2 = pd.DataFrame()
+
+    with log_timing('LLM gpt-oss-120b'):
+        tf_llm_2 = extract_tf_llm(transcription, '/data/models/llm/gpt-oss-120b-mxfp4-00001-of-00003.gguf', 'gpt-oss')
+
+    logger.info(f'{tf_llm_2}')
+
+    tf_llm_3 = pd.DataFrame()
+
+    with log_timing('LLM Llama-3.3-70B'):
+        tf_llm_3 = extract_tf_llm(transcription, '/data/models/llm/Llama-3.3-70B-Instruct-Q6_K_L-00001-of-00002.gguf', 'llama')
+
+    logger.info(f'{tf_llm_3}')
 
     # Concat all columns
 
-    # features = pd.concat([tf_llm_1, tf_llm_2, tf_llm_3, af_opensmile, vf_tsfresh], axis=1)
-
-    features = af_opensmile
+    features = pd.concat([tf_llm_1, tf_llm_2, tf_llm_3, af_opensmile, vf_tsfresh], axis=1)
 
     # Export
 
@@ -170,7 +217,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        sys.exit(main())
+        sys.exit(get_features())
     except Exception as e:
         logger.error(f"Произошла ошибка: {str(e)}")
         logger.error("Полная трассировка ошибки:")

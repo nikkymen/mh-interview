@@ -1,11 +1,56 @@
+# Build dependencies image
+FROM ubuntu:24.04 AS builder
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    software-properties-common \
+    cmake \
+    ninja-build \
+    g++ \
+    libopenblas-dev \
+    liblapack-dev \
+    libdlib-dev \
+    libgtk2.0-dev \
+    libopencv-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libtbb-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+COPY ./openface /workspace
+WORKDIR /workspace
+
+# Build OpenFace
+RUN cmake -B ./build/ -S ./ -DCMAKE_INSTALL_PREFIX=/usr/local -G Ninja && \
+    cmake --build ./build/ --target install
+
 FROM ubuntu:24.04
 
+ENV DOCKER_IMAGE_VERSION=0.0.1
+
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends\
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     ca-certificates \
     sox \
+    libopencv-core406t64 \
+    libopencv-imgproc406t64 \
+    libopencv-calib3d406t64 \
+    libopencv-highgui406t64 \
+    libopencv-objdetect406t64 \
+    libopencv-videoio406t64 \
+    libdlib19.1t64 \
+    liblapack3 \
+    libopenblas0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -22,15 +67,9 @@ COPY pyproject.toml .
 
 RUN uv sync --locked
 
-COPY get_features.py .
-COPY audio_features/extract_audio.py ./audio_features/
-COPY audio_features/opensmile_features.py ./audio_features/
-COPY video_features/openface_features.py ./video_features/
-COPY video_features/tsfresh_features.py ./video_features/
-COPY text_features/llm_features.py ./text_features/
-COPY transcript/whisper_transcript.py ./transcript/
+COPY pipeline.py .
 
-#TODO add models
+# Copy built binaries from builder stage
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Set entrypoint
-ENTRYPOINT ["uv", "run", "get_features.py"]
+ENTRYPOINT ["uv", "run", "pipeline.py"]

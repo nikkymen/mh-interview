@@ -7,6 +7,112 @@ import argparse
 from pathlib import Path
 from openai import OpenAI
 
+def read_file(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+
+fields = ["WHO-5", "PSS-4", "GAD-7", "PHQ-9", "Alienation", "Burnout"]
+system_prompt = read_file(Path(__file__).parent / "system_prompt.txt")
+
+
+def extract_gpt_oss_message(content) -> str:
+    # Look for the final channel marker
+    final_marker = "<|channel|>final<|message|>"
+    if final_marker in content:
+        # Get everything after the final marker
+        final_part = content.split(final_marker)[-1]
+        # Remove any trailing end markers
+        if "<|end|>" in final_part:
+            final_part = final_part.split("<|end|>")[0]
+        return final_part.strip()
+    return content  # Return original if no markers found
+
+def extract_tf_llm(
+    user_prompts: Union[str, list[tuple[str, str]]], model_path: str, model_id: str
+) -> pd.DataFrame:
+    is_single = False
+
+    if isinstance(user_prompts, str):
+        is_single = True
+        user_prompts = [("", user_prompts)]
+
+    llm = Llama(model_path=model_path, n_gpu_layers=-1, n_ctx=32768)
+
+    all_results = []
+
+    for id, user_prompt in user_prompts:
+
+        print(id)
+
+        output = llm.create_chat_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+
+        content = output["choices"][0]["message"]["content"]
+
+        if not content:
+            continue
+
+        print(content)
+
+        if "gpt-oss" in model_path:
+            content = extract_gpt_oss_message(content)
+
+        if not content:
+            continue
+
+        result = {}
+
+        for line in content.strip().split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                key = key.strip()
+
+                if key not in fields:
+                    continue
+
+                value = value.strip().lower()
+
+                int_value = -1
+
+                if value == "poor":
+                    int_value = 0
+                elif value == "not poor":
+                    int_value = 1
+                elif value == "high":
+                    int_value = 1
+                elif value == "not high":
+                    int_value = 0
+
+                if int_value < 0:
+                    continue
+
+                if model_id:
+                    key = model_id + "__" + key
+
+                result[key] = int_value
+
+        if len(result) == len(fields):
+            if not is_single:
+                result["id"] = id
+            all_results.append(result)
+
+    del llm
+
+    if not all_results:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_results)
+
+    if not is_single:
+        df = df.set_index("id")
+
+    return df
+
 def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
     """
     Sends a prompt to a specified model via the OpenRouter API and prints the response.
@@ -66,10 +172,6 @@ def query(client: OpenAI, model_name: str, system_prompt: str, prompt: str):
     finally:
         print("-" * (len(model_name) + 22))
         print("\n")
-
-def extract_tf_llm(prompt: str, model_name: str) -> pd.DataFrame:
-    # TODO
-    return pd.DataFrame()
 
 def main():
 

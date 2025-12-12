@@ -64,13 +64,21 @@ def main():
 
     # Check if input directory exists
     if not args.input.exists():
-        print(f"Error: Input directory {args.input} does not exist")
+        print(f"Error: Input path {args.input} does not exist")
         return
 
     # Process all video files in the input directory
     video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm'}
-    video_files = [f for f in args.input.iterdir()
-                   if f.is_file() and f.suffix.lower() in video_extensions]
+
+    if args.input.is_file():
+        if args.input.suffix.lower() not in video_extensions:
+            print(f"Error: File {args.input} has unsupported extension.")
+            return
+        video_files = [args.input]
+    else:
+        # Process all video files in the input directory
+        video_files = [f for f in args.input.iterdir()
+                       if f.is_file() and f.suffix.lower() in video_extensions]
 
     if not video_files:
         print(f"No video files found in {args.input}")

@@ -55,8 +55,5 @@ def main():
 
     print(features.columns)
 
-    #o: Path = args.output
-   # print(features.columns, file=str(o.with_suffix('.txt')))
-
 if __name__ == "__main__":
     main()

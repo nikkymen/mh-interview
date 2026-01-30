@@ -26,3 +26,8 @@ dependencies = [
 
 [[tool.uv.index]]
 url = "https://abetlen.github.io/llama-cpp-python/whl/cu124"
+
+[tool.uv.workspace]
+members = [
+    "aniemore",
+]

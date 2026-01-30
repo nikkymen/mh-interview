@@ -1,16 +1,11 @@
 import torch
-import soundfile as sf
-import os
-import time
-import re
 import argparse
+import soundfile as sf
 
 from pathlib import Path
 
 from transformers.pipelines import pipeline
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
-
-ModelPath = "models/whisper-large-v3-russian"
 
 def has_ampere_or_newer() -> bool:
     """Check if GPU has compute capability 8.0+ (Ampere or newer)."""
@@ -46,9 +41,9 @@ def format_timestamp(seconds: float) -> str:
     remaining_seconds = seconds % 60
     return f"{minutes:02}:{remaining_seconds:05.2f}"
 
-def extract_transcription(file_path: Path) -> str:
+def extract_transcription(file_path: Path, model_path = Path("models/whisper-large-v3-russian")) -> str:
     whisper = WhisperForConditionalGeneration.from_pretrained(
-        ModelPath,
+        model_path,
         torch_dtype=torch_dtype,
         low_cpu_mem_usage=True,
         use_safetensors=True,
@@ -56,7 +51,7 @@ def extract_transcription(file_path: Path) -> str:
         local_files_only=True,
     )
 
-    processor = WhisperProcessor.from_pretrained(ModelPath, local_files_only=True)
+    processor = WhisperProcessor.from_pretrained(model_path, local_files_only=True)
 
     asr_pipeline = pipeline(
         "automatic-speech-recognition",
@@ -64,7 +59,6 @@ def extract_transcription(file_path: Path) -> str:
         tokenizer=processor.tokenizer,
         feature_extractor=processor.feature_extractor,
         max_new_tokens=256,
-        # chunk_length_s=30, # Этот параметр портит длинные записи
         batch_size=16,
         return_timestamps="word",
         torch_dtype=torch_dtype,
@@ -90,98 +84,10 @@ def extract_transcription(file_path: Path) -> str:
 
     return '\n'.join(result_chunks)
 
-def extract_transcriptions(input: Path, output: Path) -> str:
-    whisper = WhisperForConditionalGeneration.from_pretrained(
-        ModelPath,
-        torch_dtype=torch_dtype,
-        low_cpu_mem_usage=True,
-        use_safetensors=True,
-        attn_implementation=attn_impl,
-        local_files_only=True,
-    )
-
-    processor = WhisperProcessor.from_pretrained(ModelPath, local_files_only=True)
-
-    asr_pipeline = pipeline(
-        "automatic-speech-recognition",
-        model=whisper,
-        tokenizer=processor.tokenizer,
-        feature_extractor=processor.feature_extractor,
-        max_new_tokens=256,
-    # chunk_length_s=30, # Этот параметр портит длинные записи
-        batch_size=16,
-        return_timestamps="word",
-        torch_dtype=torch_dtype,
-        device=device,
-    )
-    return 'TODO'
-
-# Directory containing WAV files
-# input_dir = 'data_new'
-# # Directory to save transcriptions (same as input directory)
-# output_dir = input_dir
-
-# # Create output directory if it doesn't exist
-# os.makedirs(output_dir, exist_ok=True)
-
-# # Get all WAV files in the input directory
-# wav_files = [f for f in os.listdir(input_dir) if f.lower().endswith('.wav')]
-
-# if not wav_files:
-#     print(f"No WAV files found in {input_dir}")
-#     exit(1)
-
-# print(f"Found {len(wav_files)} WAV files to process")
-
-# # Process each WAV file
-# for i, wav_file in enumerate(wav_files):
-#     print(f"Processing file {i+1}/{len(wav_files)}: {wav_file}")
-#     start_time = time.time()
-
-#     # Construct full path to the input WAV file
-#     wav_path = os.path.join(input_dir, wav_file)
-
-#     txt_file_raw = os.path.splitext(wav_file)[0] + '.txt'
-#     txt_file_ts = os.path.splitext(wav_file)[0] + '_ts.txt'
-
-#     try:
-#         # Load the audio
-#         audio_array, sample_rate = sf.read(wav_path)
-
-#         # Convert to mono if stereo
-#         if len(audio_array.shape) > 1:
-#             audio_array = audio_array[:, 0]
-
-#         # Get the transcription
-#         asr = asr_pipeline(audio_array, generate_kwargs={"language": "russian", "max_new_tokens": 256}, return_timestamps=True)
-
-#         with open(os.path.join(output_dir, txt_file_raw), 'w', encoding='utf-8') as f:
-#             # Replace sentence-ending punctuation followed by space with punctuation and newline
-#             text = re.sub(r'([.!?])\s+', r'\1\n', asr['text'])
-#             f.write(text)
-
-#         # Save the transcription to a text file
-#         with open(os.path.join(output_dir, txt_file_ts), 'w', encoding='utf-8') as f:
-#             for chunk in asr['chunks']:
-#                 start = chunk['timestamp'][0]
-#                 end = chunk['timestamp'][1]
-#                 text = chunk['text']
-#                 f.write(f"[{format_timestamp(start)} - {format_timestamp(end)}] {text.strip()}\n")
-
-#         elapsed_time = time.time() - start_time
-#         print(f"Transcription saved to {txt_file_ts} (took {elapsed_time:.2f} seconds)")
-
-#     except Exception as e:
-#         print(f"Error processing {wav_file}: {str(e)}")
-
-# print("All files processed")
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=Path, default='data/video_features/parquet/')
-    parser.add_argument("--output", type=Path, default=Path("data/features/vf_tsfresh.parquet"))
-
-    extract_transcription(Path('/home/nik/projects/psychos/interview/WIN_20250707_19_05_24_Pro/sample_002_01.wav'))
+    parser.add_argument('--input', type=Path, default='data/audio/wav/norm')
+    parser.add_argument("--output", type=Path, default=Path("data/transcript"))
 
 if __name__ == "__main__":
     main()

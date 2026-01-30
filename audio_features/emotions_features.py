@@ -1,12 +1,14 @@
 import torch
 import torch.nn.functional as F
 import torchaudio
+import argparse
+
+import pandas as pd
 
 from transformers import AutoConfig, AutoModel, Wav2Vec2FeatureExtractor
+from pathlib import Path
 
 model_id = 'Aniemore/wav2vec2-xlsr-53-russian-emotion-recognition'
-model_id = 'Aniemore/wavlm-bert-fusion-s-emotion-russian-resd'
-model_id = 'Aniemore/wavlm-emotion-russian-resd'
 
 config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
 model_ = AutoModel.from_pretrained(model_id, trust_remote_code=True)
@@ -17,7 +19,11 @@ model_.to(device)
 
 def speech_file_to_array_fn(path, sampling_rate):
     speech_array, _sampling_rate = torchaudio.load(path)
-    # Ensure we resample to the target sampling_rate (16000)
+
+    # Mix to mono if stereo.
+    if speech_array.shape[0] > 1:
+        speech_array = torch.mean(speech_array, dim=0, keepdim=True)
+
     resampler = torchaudio.transforms.Resample(_sampling_rate, sampling_rate)
     speech = resampler(speech_array).squeeze().numpy()
     return speech
@@ -30,9 +36,8 @@ def predict_segment(speech, sampling_rate):
         logits = model_(**inputs).logits
 
     scores = F.softmax(logits, dim=1).detach().cpu().numpy()[0]
-    # Return a dictionary of {label: score}
-    return {config.id2label[i]: float(score) for i, score in enumerate(scores)}
 
+    return {config.id2label[i]: float(score) for i, score in enumerate(scores)}
 
 def predict(path, sampling_rate):
     speech = speech_file_to_array_fn(path, sampling_rate)
@@ -40,13 +45,7 @@ def predict(path, sampling_rate):
     outputs = [{"Emotion": k, "Score": f"{round(v * 100, 3):.1f}%"} for k, v in scores.items()]
     return outputs
 
-
-def process_long_audio(path, window_size=5.0, stride=2.0):
-    """
-    Process audio with a sliding window to create a time series of emotions.
-    window_size: length of each segment in seconds
-    stride: step size in seconds
-    """
+def extract_timeseries(path, window_size=5.0, stride=2.0) -> pd.DataFrame:
     sampling_rate = 16000
     speech = speech_file_to_array_fn(path, sampling_rate)
 
@@ -62,24 +61,42 @@ def process_long_audio(path, window_size=5.0, stride=2.0):
 
         scores = predict_segment(chunk, sampling_rate)
 
-        top_emotion = max(scores, key=scores.get)
+        # Create a row for the dataframe
+        row = {
+            "timestamp": i / sampling_rate,
+            **scores  # Unpack emotion scores directly into the row
+        }
+        results.append(row)
 
-        print(top_emotion)
+    return pd.DataFrame(results)
 
-        results.append({
-            "start": i / sampling_rate,
-            "end": (i + window_samples) / sampling_rate,
-            "emotion": top_emotion,
-            "scores": scores
-        })
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=Path, default=Path("data/audio/raw"))
+    parser.add_argument("--output", type=Path, default=Path("data/audio_features/emotions/csv"))
 
-    return results
+    args = parser.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
 
-# Example usage:
-# result = predict("sample1.wav", 16000)
-# print(result)
+    files_to_process = []
+    if args.input.is_dir():
+        files_to_process = list(args.input.glob("*.wav"))
+    elif args.input.is_file() and args.input.suffix == ".wav":
+        files_to_process = [args.input]
+    else:
+        print(f"No valid input found at {args.input}")
+        return
 
-# Process a long file
-timeline = process_long_audio("/home/trsuser/Downloads/эмоции/norm/4729977882178254307_EDIT.wav", window_size=5, stride=2)
-for entry in timeline:
-    print(f"{entry['start']:.1f}s - {entry['end']:.1f}s: {entry['emotion']} ({entry['scores'][entry['emotion']]:.2f})")
+    for wav_file in files_to_process:
+        print(f"Processing {wav_file}...")
+        try:
+            ts_dataframe = extract_timeseries(wav_file, window_size=5, stride=2)
+
+            output_csv = args.output / f"{wav_file.stem}.csv"
+            ts_dataframe.to_csv(output_csv, index=False)
+            print(f"Saved to {output_csv}")
+        except Exception as e:
+            print(f"Error processing {wav_file}: {e}")
+
+if __name__ == "__main__":
+    main()

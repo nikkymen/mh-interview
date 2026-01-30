@@ -276,9 +276,11 @@ def analyze_predictions(results_df, output_dir="prediction_analysis"):
     return results_df
 
 if __name__ == "__main__":
-    predictions = 'predictions2/gpt-oss-120b.csv'
+    predictions = 'data/features/local_llm_2/2_tf_qwen-2.5-72b-instruct.csv'
 
-    output_dir = f'stats/{pathlib.Path(predictions).stem}'
-    merged_df = merge_prediction_results(predictions, 'actuals_bin.csv', f'{output_dir}/summary_table.csv')
+    output_dir = f'output/stats/{pathlib.Path(predictions).stem}'
+    os.makedirs(output_dir, exist_ok=True)
+
+    merged_df = merge_prediction_results(predictions, 'data/actuals.csv', f'{output_dir}/summary_table.csv')
 
     analyze_predictions(merged_df, output_dir = output_dir)
